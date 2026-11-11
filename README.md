@@ -2,7 +2,7 @@
 
 A local, version-adaptive Fortnite backend. One shared core (accounts, OAuth, MCP profiles,
 XMPP, parties, matchmaking, item shop, progression) with **version adapters** that isolate
-what differs between builds, from Season 1 (`Cert` / 1.x) through Chapter 5+ (32.00, 37.20).
+what differs between builds, from Season 1 (`Cert` / 1.x) through Chapter 7 Season 1
 
 - Runs on `http://127.0.0.1:1523` by default; everything stays on your PC.
 - **Zero npm dependencies**: Node's built-in `http`, `crypto` and `node:sqlite` only.
