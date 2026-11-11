@@ -14,6 +14,43 @@ const SAFE_NAME = /^[A-Za-z0-9_.\-]{1,128}$/;
  */
 export function createCloudStorageService({ repos, config }) {
   const root = path.join(config.data.dir, 'cloudstorage');
+  const startedAt = new Date().toISOString();
+
+  /**
+   * XMPP section for DefaultEngine.ini, pointing the client at Gallium's XMPP listener.
+   * Builds before Chapter 5 read their XMPP server from here; without it they try Epic's
+   * server and never connect (seen in 1.x logs). Raw TCP is sent straight to the XMPP port
+   * so launchers that proxy only HTTP (e.g. on 3551) are bypassed.
+   */
+  function xmppSection(build) {
+    const rule = build.adapter.xmppHotfix;
+    const transport = typeof rule === 'function' ? rule(build) : rule;
+    if (!config.xmpp.enabled || !transport) return null;
+    const host = config.server.host === '0.0.0.0' ? '127.0.0.1' : config.server.host;
+    const port = config.xmpp.port || config.server.port;
+    const addr = transport === 'ws' ? `ws://${host}` : host;
+    const block = (name) => [`[${name}]`, 'bUseSSL=false', `ServerAddr="${addr}"`, `ServerPort=${port}`].join('\r\n');
+    return `${block('OnlineSubsystemMcp.Xmpp')}\r\n\r\n${block('OnlineSubsystemMcp.Xmpp Prod')}\r\n`;
+  }
+
+  /** System files for a build: user files, plus Gallium's XMPP settings merged into DefaultEngine.ini. */
+  function systemEntries(build) {
+    const entries = new Map();
+    for (const [lower, file] of systemFiles(build)) {
+      entries.set(lower, { name: path.basename(file), read: () => fs.readFileSync(file), uploaded: fs.statSync(file).mtime.toISOString() });
+    }
+    const section = xmppSection(build);
+    if (section) {
+      const existing = entries.get('defaultengine.ini');
+      const own = existing ? existing.read() : null;
+      // A user-supplied XMPP section wins; otherwise ours is appended (or becomes the file).
+      if (!own || !/\[OnlineSubsystemMcp\.Xmpp/i.test(own.toString('utf8'))) {
+        const data = own ? Buffer.concat([own, Buffer.from(`\r\n${section}`)]) : Buffer.from(section);
+        entries.set('defaultengine.ini', { name: existing?.name || 'DefaultEngine.ini', read: () => data, uploaded: existing?.uploaded || startedAt });
+      }
+    }
+    return entries;
+  }
 
   function systemFiles(build) {
     const files = new Map();
@@ -49,15 +86,12 @@ export function createCloudStorageService({ repos, config }) {
 
   return {
     listSystem(build) {
-      return [...systemFiles(build).values()].map((file) => {
-        const data = fs.readFileSync(file);
-        return describe(path.basename(file), data, fs.statSync(file).mtime.toISOString(), { doNotCache: true });
-      });
+      return [...systemEntries(build).values()].map((e) => describe(e.name, e.read(), e.uploaded, { doNotCache: true }));
     },
     readSystem(build, name) {
-      const file = systemFiles(build).get(String(name).toLowerCase());
-      if (!file) throw Errors.notFound(`cloud storage file ${name}`);
-      return fs.readFileSync(file);
+      const entry = systemEntries(build).get(String(name).toLowerCase());
+      if (!entry) throw Errors.notFound(`cloud storage file ${name}`);
+      return entry.read();
     },
     listUser(accountId) {
       return repos.cloudFiles.list(accountId).map((f) => describe(f.filename, f.data, f.updated, { accountId, doNotCache: false }));

@@ -53,6 +53,7 @@ export async function startGallium({ dataDir = makeDataDir(), overrides = {}, pa
   const app = createApp({ config, log, partyDisconnectGraceMs });
   const server = await startServer({ config, log, app });
   config.server.port = server.address.port;
+  if (server.xmppAddress) config.xmpp.port = server.xmppAddress.port;
   const base = `http://127.0.0.1:${server.address.port}`;
   return {
     base,

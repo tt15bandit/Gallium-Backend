@@ -20,5 +20,7 @@ export default defineAdapter({
     starsPerTier: 10,
     starsForLevel: (level) => (level % 5 === 0 ? 10 : 5),
   },
+  // Observed: 4.5 used raw TCP XMPP, 5.41 used ws://.
+  xmppHotfix: (b) => (atLeast(b, 5, 0) ? 'ws' : 'tcp'),
   mcpCommands: { ...stwCompatCommands },
 });

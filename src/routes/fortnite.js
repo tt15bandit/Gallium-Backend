@@ -109,7 +109,11 @@ export function registerFortniteRoutes(router) {
   router.get('/statsproxy/api/statsv2/account/:accountId', requireAuth, (ctx) => ctx.json(ctx.services.stats.statsV2(ctx.services.accounts.require(ctx.params.accountId).id)));
   router.get('/fortnite/api/stats/accountId/:accountId/bulk/window/alltime', requireAuth, (ctx) => ctx.json(ctx.services.stats.legacyBulk(ctx.services.accounts.require(ctx.params.accountId).id)));
   router.post('/fortnite/api/leaderboards/type/global/stat/:stat/window/:window', requireAuth, (ctx) => ctx.json({ statName: ctx.params.stat, statWindow: ctx.params.window, entries: [] }));
-  router.get('/fortnite/api/game/v2/leaderboards/cohort/:accountId', ownAccount(), (ctx) => ctx.json({ accountId: ctx.auth.accountId, cohortAccounts: [], expiresAt: '9999-12-31T00:00:00.000Z', playlist: ctx.query.playlist || '' }));
+  // 1.x rejected an empty cohort with a far-future expiry as "Invalid or Expired Data";
+  // the cohort now holds the player (plus friends) and expires in a day.
+  router.get('/fortnite/api/game/v2/leaderboards/cohort/:accountId', ownAccount(), (ctx) =>
+    ctx.json({ accountId: ctx.auth.accountId, cohortAccounts: [ctx.auth.accountId, ...ctx.services.friends.friendIds(ctx.auth.accountId)], expiresAt: new Date(Date.now() + 86400000).toISOString(), playlist: ctx.query.playlist || '' }),
+  );
 
   // ---- creative (lists only; islands are not hosted) ----------------------------------------
   router.get('/fortnite/api/game/v2/creative/favorites/:accountId', ownAccount(), (ctx) => ctx.json({ results: [], hasMore: false }));

@@ -10,6 +10,8 @@ export default defineAdapter({
   description: 'Seasons 11 - 27 (Chapters 2-4)',
   matches: (b) => b.season >= 11 && b.season <= 27,
   features: { cosmeticLocker: true },
+  // Observed: 14.60 and 21.50 connected to ws://127.0.0.1:5222.
+  xmppHotfix: 'ws',
   progression: {
     maxLevel: 200,
     battlePassTiers: 100,

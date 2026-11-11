@@ -108,6 +108,9 @@ export const baseAdapter = {
   catalogEntry(entry) {
     return entry;
   },
+  // How this build reaches XMPP when Gallium writes the DefaultEngine.ini hotfix:
+  // 'tcp' (raw stream), 'ws' (ws:// URL) or null (leave the build's own setting alone).
+  xmppHotfix: null,
   mcpCommands: {},
   registerRoutes: null,
 };

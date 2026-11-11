@@ -22,5 +22,7 @@ export default defineAdapter({
     starsPerTier: 10,
     starsForLevel: (level) => (level % 5 === 0 ? 10 : 5),
   },
+  // Observed: the 1.x client only reached XMPP after a DefaultEngine.ini hotfix; 3.1 used raw TCP.
+  xmppHotfix: 'tcp',
   mcpCommands: { ...stwCompatCommands },
 });

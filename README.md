@@ -46,6 +46,13 @@ XMPP (friends, presence, party notifications) is accepted in every form the buil
 | 5.x – 21.x | `ws://` with `<stream:stream>` | `ws://127.0.0.1:5222` |
 | 32.00+ | WebSocket, RFC 7395 framing | `ws://127.0.0.1:1523` |
 
+You normally don't configure this by hand. For builds before Chapter 5, Gallium serves a
+`DefaultEngine.ini` hotfix that points the client's XMPP at `127.0.0.1:<xmpp.port>`, using
+raw TCP for 1.x–4.x and `ws://` for 5.x–27.x. It goes straight to Gallium, so launchers that
+only proxy HTTP (ATLAS Link on 3551, for example) don't get in the way. If your own
+`data/cloudstorage/DefaultEngine.ini` already has an `[OnlineSubsystemMcp.Xmpp]` section,
+yours is used instead.
+
 Logins: `-AUTH_TYPE=epic -AUTH_LOGIN=<name>@anything -AUTH_PASSWORD=<password>`. With
 `accounts.autoRegister` (on by default) the first login creates the account with that
 password, and the display name is the part before `@`. Exchange codes
