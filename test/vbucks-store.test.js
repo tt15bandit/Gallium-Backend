@@ -17,7 +17,7 @@ const balance = async (s) => profileOf(await mcp(g.base, s, 'QueryProfile', 'pro
 test('STORE tab: CurrencyStorefront lists the 1.8 V-Bucks packs as RealMoney offers', async () => {
   const s = await login(g.base, 'store1@atlas.dev', 'Rebooted', UA.cert);
   const packs = currency(await catalog(s));
-  assert.deepEqual(packs.map((p) => p.metaInfo.find((m) => m.key === 'MtxQuantity').value), ['1000', '2800', '4200', '7500', '13500']);
+  assert.deepEqual(packs.map((p) => p.metaInfo.find((m) => m.key === 'MtxQuantity').value), ['1000', '2800', '7500', '13500']);
   for (const p of packs) {
     assert.equal(p.prices[0].currencyType, 'RealMoney');
     assert.ok(p.prices[0].finalPrice > 0, 'paid price so the purchase browser opens');

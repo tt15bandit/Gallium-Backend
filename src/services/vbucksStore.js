@@ -15,11 +15,10 @@ import { balanceOf, grant as grantMtx, mirrorToProfile0 } from './profiles/curre
  *     the receipt already fulfilled.
  * Nothing is charged; the listed prices are only what the UI shows.
  */
-// Pack sizes match the DA_MtxPack* display assets in the 1.8 game files.
+// The Season 1 V-Bucks packs (1.8 also ships DA_MtxPack4200 art, but that pack was never sold).
 const PACKS = [
   { key: 'small', vbucks: 1000, bonus: 0, cents: 999, devName: 'Small Currency Pack', iconSize: 'Small' },
   { key: 'medium', vbucks: 2800, bonus: 300, cents: 2499, devName: 'Medium Currency Pack', iconSize: 'Small' },
-  { key: 'intermediate', vbucks: 4200, bonus: 0, cents: 3999, devName: 'Intermediate Currency Pack', iconSize: 'Small' },
   { key: 'large', vbucks: 7500, bonus: 1500, cents: 5999, devName: 'Large Currency Pack', iconSize: 'Large' },
   { key: 'jumbo', vbucks: 13500, bonus: 3500, cents: 9999, devName: 'Jumbo Currency Pack', iconSize: 'Large' },
 ];

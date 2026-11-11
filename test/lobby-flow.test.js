@@ -96,7 +96,7 @@ for (const build of BUILDS) {
       assert.equal(acct.json.displayName, name);
       assert.equal(acct.json.email, `${name}@atlas.dev`);
       assert.deepEqual((await req('GET', `/account/api/public/account/${s.accountId}/externalAuths`)).json, []);
-      assert.deepEqual((await req('GET', '/account/api/epicdomains/ssodomains')).json, []);
+      assert.ok((await req('GET', '/account/api/epicdomains/ssodomains')).json.includes('127.0.0.1'), 'Gallium is an SSO domain (purchase browser)');
     });
 
     test('startup data: features, cloud storage, catalog, timeline, content', async () => {

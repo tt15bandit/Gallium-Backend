@@ -130,5 +130,17 @@ export function registerAccountRoutes(router) {
     ctx.noContent();
   });
 
-  router.get('/account/api/epicdomains/ssodomains', (ctx) => ctx.json([]));
+  // 1.8's purchase browser only signs a page in (SSO) when its domain is listed here, and fails
+  // with "Unable to generate SSO URL" otherwise. Gallium's own address is listed so the checkout
+  // page qualifies.
+  router.get('/account/api/epicdomains/ssodomains', (ctx) => ctx.json([...new Set([ctx.localHost, '127.0.0.1', 'localhost', 'epicgames.com', 'unrealengine.com', 'fortnite.com'])]));
+
+  // SSO landing (/exchange?exchangeCode=...&redirectUrl=...): accept the code and continue to the page.
+  router.get('/account/exchange', (ctx) => {
+    const target = String(ctx.query.redirectUrl || '');
+    if (!/^https?:\/\//i.test(target)) throw Errors.validation('redirectUrl must be an http(s) URL');
+    ctx.res.statusCode = 302;
+    ctx.header('Location', target);
+    ctx.noContent(302);
+  });
 }
