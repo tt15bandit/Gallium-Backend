@@ -94,6 +94,7 @@ export function createAdminService({ accounts, profiles, auth, versions, cosmeti
           const season = { ...(athena.stat('season') || {}) };
           season.numWins = (season.numWins || 0) + 1;
           athena.setStat('season', season);
+          if ('season_wins' in athena.stats) athena.setStat('season_wins', season.numWins);
         }
         for (const [objective, count] of Object.entries(result.questProgress || {})) {
           if (!Number.isInteger(count) || count < 0) throw Errors.validation(`questProgress.${objective} must be a non-negative integer`);

@@ -5,7 +5,7 @@ import { balanceOf, mirrorToProfile0 } from './currency.js';
 import { isoNow } from '../../core/util.js';
 
 // Athena stats that belong to a single season and are swapped when the client's season changes.
-export const SEASONAL_STATS = ['level', 'xp', 'book_level', 'book_xp', 'book_purchased', 'season_match_boost', 'season_friend_match_boost', 'season', 'battlestars', 'xp_overflow', 'rested_xp', 'rested_xp_overflow'];
+export const SEASONAL_STATS = ['level', 'xp', 'book_level', 'book_xp', 'book_purchased', 'season_match_boost', 'season_friend_match_boost', 'season', 'battlestars', 'xp_overflow', 'rested_xp', 'rested_xp_overflow', 'season_level', 'season_wins'];
 
 /**
  * Loads, creates, normalises and persists MCP profiles.
@@ -113,6 +113,10 @@ export function createProfileService({ db, repos, config, cosmetics, log, cacheS
     for (const templateId of DEFAULT_ITEMS) {
       if (!profile.findItem(templateId)) profile.addItem(templateId, templateId, cosmeticAttributes());
     }
+    // Mirrors read by 1.x Season Shop requirements.
+    if ('season_level' in profile.stats && profile.stats.season_level !== profile.stats.level) profile.setStat('season_level', profile.stats.level);
+    const wins = profile.stats.season?.numWins || 0;
+    if ('season_wins' in profile.stats && profile.stats.season_wins !== wins) profile.setStat('season_wins', wins);
     if (build.features.cosmeticLocker && !profile.items.has(LOCKER_ITEM_ID)) {
       profile.addItem(LOCKER_ITEM_ID, LOCKER_TEMPLATE, lockerItemAttributes(profile.stats));
       if (!Array.isArray(profile.stats.loadouts) || !profile.stats.loadouts.length) profile.setStat('loadouts', [LOCKER_ITEM_ID]);
@@ -133,7 +137,15 @@ export function createProfileService({ db, repos, config, cosmetics, log, cacheS
     }
     const stored = repos.seasons.get(accountId, build.season) || {};
     const defaults = build.adapter.athenaStats(build);
-    for (const key of SEASONAL_STATS) profile.setStat(key, key in stored ? stored[key] : defaults[key]);
+    for (const key of SEASONAL_STATS) {
+      const value = key in stored ? stored[key] : defaults[key];
+      if (value !== undefined) profile.setStat(key, value);
+      else if (key in profile.stats) {
+        // Stat this build's adapter doesn't use (e.g. season_level outside 1.x-3.x).
+        delete profile.stats[key];
+        profile.statsDirty = true;
+      }
+    }
     profile.setStat('season_num', build.season);
     profile.setStat('past_seasons', pastSeasons(accountId, build.season));
     log.debug(`Account ${accountId}: athena switched from season ${current} to ${build.season}`);

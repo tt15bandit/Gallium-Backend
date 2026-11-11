@@ -1,4 +1,4 @@
-import { startOfUtcDay } from '../core/util.js';
+import { sha256Hex, startOfUtcDay } from '../core/util.js';
 
 /**
  * Calendar timeline and the fortnite-game content page. Both are generated per request from
@@ -35,8 +35,25 @@ export function createContentService({ dataFiles }) {
     };
   }
 
-  function pages(build) {
+  /**
+   * News messages: data/content/news.json (per season: data/content/news-season<N>.json),
+   * [{ "title", "body", "image"? }]. Images default to Gallium's own /gallium/assets/news.png.
+   * `assetBase` is the http://host:port the client used, so friends get reachable image URLs.
+   */
+  function newsMessages(build, assetBase) {
+    const custom = dataFiles.first(`content/news-season${build.season}.json`, 'content/news.json');
+    const list = Array.isArray(custom) && custom.length ? custom : [{ title: 'Gallium', body: `Running on a local Gallium backend (season ${build.season}).` }];
+    return list
+      .filter((m) => m && typeof m.title === 'string')
+      .slice(0, 10)
+      .map((m, i) => ({ title: m.title, body: typeof m.body === 'string' ? m.body : '', image: typeof m.image === 'string' && m.image ? m.image : `${assetBase}/gallium/assets/news.png?v=${i}`, id: `gallium-${i}` }));
+  }
+
+  // Lastmodified changes only when the news itself changes, so "new news" isn't flagged every request.
+  function pages(build, { assetBase = 'http://127.0.0.1:1523' } = {}) {
     const t = times();
+    const news = newsMessages(build, assetBase);
+    const newsDate = new Date(Date.UTC(2017, 6, 25) + (parseInt(sha256Hex(JSON.stringify(news)).slice(0, 8), 16) % 525600) * 60000).toISOString();
     const meta = (title) => ({ _title: title, _noIndex: false, _activeDate: '2017-07-25T00:00:00.000Z', lastModified: t.now, _locale: 'en-US' });
     let page = {
       _title: 'Fortnite Game',
@@ -46,12 +63,14 @@ export function createContentService({ dataFiles }) {
       battleroyalenews: {
         news: {
           _type: 'Battle Royale News',
-          motds: [
-            { entryType: 'Text', image: '', tileImage: '', hidden: false, videoMute: false, tabTitleOverride: 'Gallium', _type: 'CommonUI Simple Message MOTD', title: 'Gallium', body: `Running on a local Gallium backend (season ${build.season}).`, videoLoop: false, videoStreamingEnabled: false, sortingPriority: 0, id: 'gallium-motd', spotlight: false },
-          ],
-          messages: [{ hidden: false, _type: 'CommonUI Simple Message Base', adspace: '', title: 'Gallium', body: `Running on a local Gallium backend (season ${build.season}).`, spotlight: false }],
+          motds: news.map((m, i) => ({ entryType: 'Text', image: m.image, tileImage: m.image, hidden: false, videoMute: false, tabTitleOverride: m.title, _type: 'CommonUI Simple Message MOTD', title: m.title, body: m.body, videoLoop: false, videoStreamingEnabled: false, sortingPriority: 0, id: m.id, spotlight: false })),
+          // 1.8 (UFortAthenaNewsWidget) reads these, including messageType and image.
+          messages: news.map((m) => ({ image: m.image, hidden: false, messageType: 'normal', _type: 'CommonUI Simple Message Base', adspace: '', title: m.title, body: m.body, spotlight: false })),
         },
+        header: '',
+        style: 'None',
         ...meta('battleroyalenews'),
+        lastModified: newsDate,
       },
       emergencynotice: { news: { platform_messages: [], _type: 'Battle Royale News', messages: [] }, ...meta('emergencynotice') },
       emergencynoticev2: { 'jcr:isCheckedOut': true, _title: 'emergencynoticev2', _noIndex: false, emergencynotices: { _type: 'Emergency Notices', emergencynotices: [] }, _activeDate: '2017-07-25T00:00:00.000Z', lastModified: t.now, _locale: 'en-US' },

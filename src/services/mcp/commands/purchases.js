@@ -46,6 +46,15 @@ export const purchaseCommands = {
         lootResult = cmd.services.progression.applyBattlePassOffer(cmd.getProfile, offer.battlePass, quantity, cmd.build);
       } else {
         if (quantity !== 1) throw Errors.validation('Cosmetic offers can only be purchased once');
+        // Season Shop offers can be locked behind a season level / number of wins.
+        const req = offer.requirements;
+        if (req) {
+          const athena = cmd.getProfile('athena');
+          const level = athena.stat('level', 1);
+          const wins = athena.stat('season', {})?.numWins || 0;
+          if (req.seasonLevel && level < req.seasonLevel) throw Errors.invalidParameter(`This offer requires season level ${req.seasonLevel} (you are level ${level})`);
+          if (req.seasonWins && wins < req.seasonWins) throw Errors.invalidParameter(`This offer requires ${req.seasonWins} season wins (you have ${wins})`);
+        }
         const grants = offer.entry.itemGrants || [];
         if (!grants.length) throw Errors.invalidParameter(`Offer ${offerId} grants nothing`);
         if (grants.every((g) => ownsItem(cmd.getProfile, g.templateId))) throw Errors.alreadyOwned();

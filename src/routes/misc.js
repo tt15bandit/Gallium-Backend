@@ -1,4 +1,7 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { isoNow } from '../core/util.js';
+import { defaultNewsImage } from '../services/images.js';
 import { ownAccount, requireAccount, requireAuth } from './middleware.js';
 
 /** Small Epic services the client checks during login (lightswitch, EULA, events, ...). */
@@ -20,9 +23,10 @@ export function registerMiscRoutes(router) {
   router.post('/datarouter/api/v1/public/data', (ctx) => ctx.noContent());
   router.post('/datarouter/api/v1/public/data/*', (ctx) => ctx.noContent());
 
-  router.get('/content/api/pages/fortnite-game', (ctx) => ctx.json(ctx.services.content.pages(ctx.version)));
+  const assetBase = (ctx) => `http://${ctx.localHost}:${ctx.localPort}`;
+  router.get('/content/api/pages/fortnite-game', (ctx) => ctx.json(ctx.services.content.pages(ctx.version, { assetBase: assetBase(ctx) })));
   router.get('/content/api/pages/fortnite-game/:section', (ctx) => {
-    const pages = ctx.services.content.pages(ctx.version);
+    const pages = ctx.services.content.pages(ctx.version, { assetBase: assetBase(ctx) });
     const section = Object.entries(pages).find(([k]) => k.toLowerCase() === ctx.params.section.toLowerCase());
     if (section) ctx.json(section[1]);
     else ctx.json({ _title: ctx.params.section, _activeDate: '2017-07-25T00:00:00.000Z', lastModified: isoNow(), _locale: 'en-US' });
@@ -54,4 +58,25 @@ export function registerMiscRoutes(router) {
   router.get('/api/v1/assets/Fortnite/:version/:netcl', requireAuth, (ctx) => ctx.json({ FortCreativeDiscoverySurface: { meta: { promotion: 0 }, assets: {} } }));
 
   router.get('/fortnite/api/game/v2/twitch/:accountId', requireAccount, (ctx) => ctx.noContent());
+
+  // News image: data/content/news.png if you add one, otherwise a generated default.
+  router.get('/gallium/assets/news.png', (ctx) => {
+    const own = path.join(ctx.services.config.data.dir, 'content', 'news.png');
+    ctx.header('Cache-Control', 'max-age=3600');
+    ctx.send(fs.existsSync(own) ? fs.readFileSync(own) : defaultNewsImage(), 'image/png');
+  });
+
+  // Global chat rooms (1.x frontends). Field names from the 1.8 client; the room is an XMPP MUC
+  // hosted by Gallium, so everyone on this backend shares one global chat.
+  router.get('/fortnite/api/game/v2/chat/:accountId/recommendGeneralChatRooms/:subgame/:platform', ownAccount(), (ctx) =>
+    ctx.json({
+      globalChatRooms: [{ roomName: 'fortnite' }],
+      founderChatRooms: [],
+      bNeedsPaidAccessForGlobalChat: false,
+      bNeedsPaidAccessForFounderChat: false,
+      bIsGlobalChatDisabled: false,
+      bIsFounderChatDisabled: false,
+      bIsSubGameGlobalChatDisabled: false,
+    }),
+  );
 }

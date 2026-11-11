@@ -68,11 +68,11 @@ export function registerFortniteRoutes(router) {
   router.get('/fortnite/api/calendar/v1/timeline', requireAuth, (ctx) => ctx.json(ctx.services.content.timeline(ctx.version)));
 
   // ---- cloud storage ------------------------------------------------------------------------
-  router.get('/fortnite/api/cloudstorage/system', requireAuth, (ctx) => ctx.json(ctx.services.cloudStorage.listSystem(ctx.version)));
+  router.get('/fortnite/api/cloudstorage/system', requireAuth, (ctx) => ctx.json(ctx.services.cloudStorage.listSystem(ctx.version, ctx.localHost)));
   // No v2 dispatch config: 32.00 logs show a 204 here makes the client use the legacy (v1) file system.
   router.get('/fortnite/api/cloudstorage/system/config', requireAuth, (ctx) => ctx.noContent());
   router.get('/fortnite/api/cloudstorage/system/:filename', requireAuth, (ctx) => {
-    ctx.send(ctx.services.cloudStorage.readSystem(ctx.version, ctx.params.filename), 'application/octet-stream');
+    ctx.send(ctx.services.cloudStorage.readSystem(ctx.version, ctx.params.filename, ctx.localHost), 'application/octet-stream');
   });
   // Empty config makes builds that ask for user-cloud config fall back to the legacy (v1) system.
   router.get('/fortnite/api/cloudstorage/user/config', requireAuth, (ctx) => ctx.noContent());
@@ -91,7 +91,7 @@ export function registerFortniteRoutes(router) {
 
   // ---- matchmaking --------------------------------------------------------------------------
   router.get('/fortnite/api/game/v2/matchmakingservice/ticket/player/:accountId', ownAccount(), (ctx) => {
-    ctx.json(ctx.services.matchmaking.createTicket(ctx.auth.accountId, ctx.query));
+    ctx.json(ctx.services.matchmaking.createTicket(ctx.auth.accountId, ctx.query, `${ctx.localHost}:${ctx.localPort}`));
   });
   router.get('/fortnite/api/game/v2/matchmaking/account/:accountId/session/:sessionId', ownAccount(), (ctx) => {
     ctx.json({ accountId: ctx.auth.accountId, sessionId: ctx.params.sessionId, key: ctx.params.sessionId });

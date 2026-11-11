@@ -12,7 +12,7 @@ export default defineAdapter({
   id: 'chapter1',
   description: 'Fortnite 3.5 - 10.x (Chapter 1)',
   matches: (b) => atLeast(b, 3, 5) && b.season <= 10,
-  features: { cosmeticLocker: (b) => atLeast(b, 7, 0), shopSectionMeta: false },
+  features: { cosmeticLocker: (b) => atLeast(b, 7, 0), shopSectionMeta: false, legacyTokens: true },
   progression: {
     maxLevel: 100,
     battlePassTiers: 100,

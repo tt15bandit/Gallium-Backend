@@ -11,12 +11,13 @@ export function registerAccountRoutes(router) {
     const grant = body.grant_type;
     if (typeof grant !== 'string') throw Errors.invalidRequest('grant_type is required');
     const log = ctx.services.log.child('auth');
+    const legacy = !!ctx.version.features.legacyTokens;
     let account = null;
     let deviceId = null;
 
     switch (grant) {
       case 'client_credentials':
-        return ctx.json(auth.tokenResponse(auth.issue({ clientId: client.clientId, authMethod: 'client_credentials' })));
+        return ctx.json(auth.tokenResponse(auth.issue({ clientId: client.clientId, authMethod: 'client_credentials', legacy })));
 
       case 'password': {
         const username = typeof body.username === 'string' ? body.username.trim() : '';
@@ -67,7 +68,7 @@ export function registerAccountRoutes(router) {
 
     if (account.banned) throw Errors.accountBanned(account.displayName);
     accounts.recordLogin(account.id, ctx.version.detected ? ctx.version.raw : undefined);
-    const issued = auth.issue({ account, clientId: client.clientId, authMethod: grant, deviceId });
+    const issued = auth.issue({ account, clientId: client.clientId, authMethod: grant, deviceId, legacy });
     log.info(`${account.displayName} logged in (${grant}, build ${ctx.version.detected ? ctx.version.raw : 'unknown'}, adapter ${ctx.adapter.id})`);
     ctx.json(auth.tokenResponse(issued));
   });

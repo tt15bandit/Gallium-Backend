@@ -72,7 +72,8 @@ for (const build of BUILDS) {
       assert.deepEqual(ls.json[0].allowedActions, ['PLAY', 'DOWNLOAD']);
       const cc = await call(g.base, 'POST', '/account/api/oauth/token', { ua: build.ua, headers: { Authorization: FN_CLIENT }, form: { grant_type: 'client_credentials' } });
       assert.equal(cc.status, 200);
-      assert.match(cc.json.access_token, /^eg1~/);
+      // Chapter 1 gets 32-hex tokens (1.8 XMPP rejects eg1 JWTs), later builds eg1 tokens.
+      assert.match(cc.json.access_token, ['season1-3', 'chapter1'].includes(build.adapter) ? /^[0-9a-f]{32}$/ : /^eg1~/);
       assert.equal(cc.json.account_id, undefined);
       const vc = await req('GET', '/fortnite/api/v2/versioncheck/Windows?version=x');
       assert.deepEqual(vc.json, { type: 'NO_UPDATE' });

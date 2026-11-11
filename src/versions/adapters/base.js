@@ -32,6 +32,9 @@ export const baseAdapter = {
     lockerService: false,
     // Storefront entries carry meta.SectionId / TileSize.
     shopSectionMeta: true,
+    // Plain 32-hex access tokens instead of "eg1~" JWTs. Chapter 1 predates eg1 tokens, and
+    // 1.8's XMPP rejects the long token as "XMPP log-in credentials not valid".
+    legacyTokens: false,
   },
   progression: {
     // XP needed to go from `level` to `level + 1`.

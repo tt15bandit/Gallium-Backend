@@ -81,6 +81,7 @@ export function createProgressionService({ dataFiles, cosmetics, log }) {
     athena.setStat('xp', xp);
     if (level !== startLevel) {
       athena.setStat('level', level);
+      if ('season_level' in athena.stats) athena.setStat('season_level', level);
       athena.setStat('accountLevel', athena.stat('accountLevel', 1) + (level - startLevel));
     }
     if (stars !== athena.stat('book_xp', 0)) athena.setStat('book_xp', stars);

@@ -52,11 +52,13 @@ export function createAuthService({ repos, config, log }) {
     return { clientId, clientSecret: idx === -1 ? '' : decoded.slice(idx + 1) };
   }
 
-  function makeToken(kind, { account, clientId, sessionId, authMethod, deviceId, ttlSeconds }) {
+  function makeToken(kind, { account, clientId, sessionId, authMethod, deviceId, ttlSeconds, legacy }) {
     const now = Date.now();
     const jti = hexId();
     const expiresAt = now + ttlSeconds * 1000;
     repos.tokens.insert({ id: jti, kind, accountId: account?.id ?? null, clientId, sessionId, authMethod, deviceId, createdAt: isoNow(), expiresAt });
+    // Legacy (pre-eg1) tokens are the bare 128-bit random id, the same 32-hex shape Epic used then.
+    if (legacy) return { token: jti, jti, expiresAt };
     const token = sign({
       jti,
       t: kind === 'access' ? 's' : 'r',
@@ -74,12 +76,12 @@ export function createAuthService({ repos, config, log }) {
   }
 
   /** Issue an access (+ refresh) token pair for an account, or a client token when account is null. */
-  function issue({ account = null, clientId, authMethod, deviceId = null }) {
+  function issue({ account = null, clientId, authMethod, deviceId = null, legacy = false }) {
     const sessionId = hexId();
     const dvid = account ? deviceId || sha256Hex(`${account.id}:${clientId}`).slice(0, 32) : null;
     const ttl = config.auth.accessTokenTtlSeconds;
-    const access = makeToken('access', { account, clientId, sessionId, authMethod, deviceId: dvid, ttlSeconds: account ? ttl : Math.min(ttl, 4 * 3600) });
-    const refresh = account ? makeToken('refresh', { account, clientId, sessionId, authMethod, deviceId: dvid, ttlSeconds: config.auth.refreshTokenTtlSeconds }) : null;
+    const access = makeToken('access', { account, clientId, sessionId, authMethod, deviceId: dvid, legacy, ttlSeconds: account ? ttl : Math.min(ttl, 4 * 3600) });
+    const refresh = account ? makeToken('refresh', { account, clientId, sessionId, authMethod, deviceId: dvid, legacy, ttlSeconds: config.auth.refreshTokenTtlSeconds }) : null;
     return { sessionId, access, refresh, deviceId: dvid, clientId, authMethod, account };
   }
 
@@ -112,10 +114,17 @@ export function createAuthService({ repos, config, log }) {
     return res;
   }
 
+  /** Token id from either format: a bare 32-hex legacy token, or the jti inside an eg1 JWT. */
+  function tokenId(token) {
+    const raw = String(token || '').replace(/^bearer\s+/i, '').trim();
+    if (/^[0-9a-f]{32}$/i.test(raw)) return raw.toLowerCase();
+    return decode(raw)?.jti || null;
+  }
+
   function lookup(token, kind) {
-    const payload = decode(token);
-    if (!payload?.jti) return null;
-    const row = repos.tokens.byId(payload.jti);
+    const id = tokenId(token);
+    if (!id) return null;
+    const row = repos.tokens.byId(id);
     if (!row || row.kind !== kind || row.expiresAt <= Date.now()) return null;
     const account = row.accountId ? repos.accounts.byId(row.accountId) : null;
     if (row.accountId && (!account || account.banned)) return null;
@@ -158,8 +167,8 @@ export function createAuthService({ repos, config, log }) {
     },
     killSession: (sessionId) => repos.tokens.deleteSession(sessionId),
     killToken(token) {
-      const payload = decode(token);
-      const row = payload?.jti ? repos.tokens.byId(payload.jti) : null;
+      const id = tokenId(token);
+      const row = id ? repos.tokens.byId(id) : null;
       if (row) repos.tokens.deleteSession(row.sessionId);
       return !!row;
     },

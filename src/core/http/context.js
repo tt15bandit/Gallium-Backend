@@ -30,6 +30,19 @@ export class Context {
     return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
   }
 
+  /**
+   * This machine's address as seen by the caller (the interface the request arrived on), e.g.
+   * 127.0.0.1 locally or the Radmin/LAN IP for friends. Used in URLs handed back to clients.
+   */
+  get localHost() {
+    const addr = (this.req.socket.localAddress || '127.0.0.1').replace(/^::ffff:/, '');
+    return addr === '::1' || addr === '::' || addr === '0.0.0.0' ? '127.0.0.1' : addr;
+  }
+
+  get localPort() {
+    return this.req.socket.localPort;
+  }
+
   get userAgent() {
     return this.headers['user-agent'] || '';
   }

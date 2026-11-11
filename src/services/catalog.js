@@ -14,14 +14,18 @@ const ROTATION_TYPES = Object.keys(PRICES);
 const RARITIES = ['uncommon', 'rare', 'epic', 'legendary'];
 
 /**
- * Item Shop (storefront v2). Offers come from data/shop.json:
+ * Item Shop (storefront v2). Each season has its own shop file, data/shop/season<N>.json,
+ * falling back to data/shop.json:
  * {
- *   "rotation": { "enabled": true, "featured": 4, "daily": 6 },
  *   "featured": [{ "items": ["AthenaCharacter:CID_..."], "price": 1500 }],
- *   "daily":    [{ "items": ["AthenaPickaxe:..."], "price": 800 }]
+ *   "daily":    [{ "items": ["AthenaPickaxe:..."], "price": 800 }],
+ *   "season":   [{ "items": ["AthenaCharacter:CID_028_Athena_Commando_F"], "price": 1200, "seasonLevel": 20 }],
+ *   "rotation": { "enabled": false, "featured": 4, "daily": 6 }
  * }
- * Manual entries are always listed; with rotation enabled, extra offers are picked each UTC day
- * (deterministically) from the cosmetics available to the requesting build's season.
+ * "featured" -> BRWeeklyStorefront, "daily" -> BRDailyStorefront, "season" -> BRSeasonStorefront
+ * (the Season Shop tab; storefront names taken from the 1.8 game files). Season Shop offers can
+ * require a season level / wins via the SeasonLevelReq / SeasonWinsReq meta keys the client reads.
+ * Optional rotation adds random offers each UTC day from cosmetics the build's season can use.
  */
 export function createCatalogService({ dataFiles, cosmetics, progression, log }) {
   const cache = new Map();
@@ -38,7 +42,7 @@ export function createCatalogService({ dataFiles, cosmetics, progression, log })
     return table?.[rarity] ?? 500;
   }
 
-  function makeEntry(templateIds, price, section, build, dayKey, sortPriority) {
+  function makeEntry(templateIds, price, section, build, dayKey, sortPriority, reqs = {}) {
     const devName = `[VIRTUAL]1 x ${templateIds.join(', ')} for ${price} MtxCurrency`;
     const tileSize = section === 'Featured' ? 'Normal' : 'Small';
     const entry = {
@@ -62,9 +66,13 @@ export function createCatalogService({ dataFiles, cosmetics, progression, log })
       sortPriority,
       catalogGroupPriority: 0,
     };
-    if (build.features.shopSectionMeta) {
-      entry.meta = { SectionId: section, TileSize: tileSize };
-      entry.metaInfo = [{ key: 'SectionId', value: section }, { key: 'TileSize', value: tileSize }];
+    const meta = {};
+    if (build.features.shopSectionMeta) Object.assign(meta, { SectionId: section, TileSize: tileSize });
+    if (Number.isInteger(reqs.seasonLevel) && reqs.seasonLevel > 0) meta.SeasonLevelReq = String(reqs.seasonLevel);
+    if (Number.isInteger(reqs.seasonWins) && reqs.seasonWins > 0) meta.SeasonWinsReq = String(reqs.seasonWins);
+    if (Object.keys(meta).length) {
+      entry.meta = meta;
+      entry.metaInfo = Object.entries(meta).map(([key, value]) => ({ key, value }));
     }
     return build.adapter.catalogEntry(entry, build);
   }
@@ -93,7 +101,7 @@ export function createCatalogService({ dataFiles, cosmetics, progression, log })
 
   function build_(build) {
     const { dayKey, expiration } = dayBounds();
-    const config = dataFiles.read('shop.json') || {};
+    const config = dataFiles.first(`shop/season${build.season}.json`, 'shop.json') || {};
     const bpConfig = progression.battlePass(build.season);
     const key = `${dayKey}|${build.season}|${build.adapter.id}|${build.features.shopSectionMeta}|${cosmetics.count}|${sha256Hex(JSON.stringify([config, bpConfig?.offers ?? null]))}`;
     const hit = cache.get(key);
@@ -102,9 +110,10 @@ export function createCatalogService({ dataFiles, cosmetics, progression, log })
     const manual = (list) => (Array.isArray(list) ? list : []).filter((e) => Array.isArray(e?.items) && e.items.length && Number.isInteger(e.price) && e.price >= 0);
     const featuredManual = manual(config.featured);
     const dailyManual = manual(config.daily);
-    const used = new Set([...featuredManual, ...dailyManual].flatMap((e) => e.items.map((t) => t.toLowerCase())));
-    const rotation = config.rotation || { enabled: true, featured: 4, daily: 6 };
-    const picks = rotation.enabled === false ? { featured: [], daily: [] } : rotationPicks(build, dayKey, rotation.featured ?? 4, rotation.daily ?? 6, used);
+    const seasonManual = manual(config.season);
+    const used = new Set([...featuredManual, ...dailyManual, ...seasonManual].flatMap((e) => e.items.map((t) => t.toLowerCase())));
+    const rotation = config.rotation || {};
+    const picks = rotation.enabled === true ? rotationPicks(build, dayKey, rotation.featured ?? 4, rotation.daily ?? 6, used) : { featured: [], daily: [] };
 
     let sort = 0;
     const featured = [
@@ -115,9 +124,13 @@ export function createCatalogService({ dataFiles, cosmetics, progression, log })
       ...dailyManual.map((e) => makeEntry(e.items, e.price, 'Daily', build, dayKey, sort--)),
       ...picks.daily.map((t) => makeEntry([t], priceFor(t), 'Daily', build, dayKey, sort--)),
     ];
+    const seasonShop = seasonManual.map((e) => makeEntry(e.items, e.price, 'Season', build, dayKey, sort--, { seasonLevel: e.seasonLevel, seasonWins: e.seasonWins }));
+    const requirements = new Map();
+    for (const [i, e] of seasonManual.entries()) requirements.set(seasonShop[i].offerId, { seasonLevel: e.seasonLevel || 0, seasonWins: e.seasonWins || 0 });
     const storefronts = [
       { name: 'BRWeeklyStorefront', catalogEntries: featured },
       { name: 'BRDailyStorefront', catalogEntries: daily },
+      { name: 'BRSeasonStorefront', catalogEntries: seasonShop },
     ];
     const bpOffers = progression.offersFor(build);
     const battlePassById = new Map();
@@ -132,7 +145,7 @@ export function createCatalogService({ dataFiles, cosmetics, progression, log })
       });
     }
     const catalog = { refreshIntervalHrs: 24, dailyPurchaseHrs: 24, expiration, storefronts };
-    const result = { catalog, battlePassById };
+    const result = { catalog, battlePassById, requirements };
     if (cache.size > 64) cache.clear();
     cache.set(key, result);
     return result;
@@ -140,11 +153,12 @@ export function createCatalogService({ dataFiles, cosmetics, progression, log })
 
   return {
     get: (build) => build_(build).catalog,
+    defaultPrice: priceFor,
     findOffer(offerId, build) {
-      const { catalog, battlePassById } = build_(build);
+      const { catalog, battlePassById, requirements } = build_(build);
       for (const sf of catalog.storefronts) {
         const entry = sf.catalogEntries.find((e) => e.offerId === offerId);
-        if (entry) return { entry, storefront: sf.name, battlePass: battlePassById.get(offerId) || null };
+        if (entry) return { entry, storefront: sf.name, battlePass: battlePassById.get(offerId) || null, requirements: requirements.get(offerId) || null };
       }
       return null;
     },

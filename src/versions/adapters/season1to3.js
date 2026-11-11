@@ -1,4 +1,4 @@
-import { defineAdapter } from './base.js';
+import { defineAdapter, baseAdapter } from './base.js';
 import { atLeast } from '../buildInfo.js';
 import { stwCompatCommands } from '../../services/mcp/commands/stwCompat.js';
 
@@ -14,7 +14,7 @@ export default defineAdapter({
   matches: (b) => !atLeast(b, 3, 5),
   profileIds: ['athena', 'profile0', 'common_core', 'common_public', 'creative', 'collections', 'metadata', 'theater0', 'outpost0', 'collection_book_people0', 'collection_book_schematics0', 'campaign'],
   currencyProfile: 'profile0',
-  features: { cosmeticLocker: false, shopSectionMeta: false },
+  features: { cosmeticLocker: false, shopSectionMeta: false, legacyTokens: true },
   progression: {
     maxLevel: 100,
     battlePassTiers: (b) => (b.season <= 2 ? 70 : 100),
@@ -22,6 +22,9 @@ export default defineAdapter({
     starsPerTier: 10,
     starsForLevel: (level) => (level % 5 === 0 ? 10 : 5),
   },
+  // 1.8 checks Season Shop requirements (SeasonLevelReq / SeasonWinsReq) against these stats;
+  // Gallium keeps them in step with level and season wins.
+  athenaStats: (b) => ({ ...baseAdapter.athenaStats(b), season_level: 1, season_wins: 0 }),
   // Observed: the 1.x client only reached XMPP after a DefaultEngine.ini hotfix; 3.1 used raw TCP.
   xmppHotfix: 'tcp',
   mcpCommands: { ...stwCompatCommands },

@@ -28,13 +28,15 @@ export function createMatchmakingService({ config, log, gameServers, repos }) {
     return { netcl: parts[0], hotfix: parts[1], region: parts[2].toUpperCase() || config.matchmaking.defaultRegion, playlist: parts.slice(3).join(':') };
   }
 
-  function serviceUrl() {
+  /** `reachedVia` = "host:port" the client used for the ticket request, so friends get a reachable URL. */
+  function serviceUrl(reachedVia) {
     if (config.matchmaking.serviceUrl) return config.matchmaking.serviceUrl;
+    if (reachedVia) return `ws://${reachedVia}/matchmaking`;
     const host = config.server.host === '0.0.0.0' ? '127.0.0.1' : config.server.host;
     return `ws://${host}:${config.server.port}/matchmaking`;
   }
 
-  function createTicket(accountId, query) {
+  function createTicket(accountId, query, reachedVia) {
     const bucket = parseBucket(query.bucketId);
     const party = String(query.partyPlayerIds || accountId).split(',').filter(Boolean);
     if (!party.includes(accountId)) party.push(accountId);
@@ -50,7 +52,7 @@ export function createMatchmakingService({ config, log, gameServers, repos }) {
       exp: Date.now() + config.matchmaking.ticketTtlSeconds * 1000,
     };
     const payload = Buffer.from(JSON.stringify(data)).toString('base64');
-    return { serviceUrl: serviceUrl(), ticketType: 'mms-player', payload, signature: hmacHex(secret, payload) };
+    return { serviceUrl: serviceUrl(reachedVia), ticketType: 'mms-player', payload, signature: hmacHex(secret, payload) };
   }
 
   /** Validate "Epic-Signed mms-player <payload> <signature>". */

@@ -22,11 +22,12 @@ export function createCloudStorageService({ repos, config }) {
    * server and never connect (seen in 1.x logs). Raw TCP is sent straight to the XMPP port
    * so launchers that proxy only HTTP (e.g. on 3551) are bypassed.
    */
-  function xmppSection(build) {
+  function xmppSection(build, requestHost) {
     const rule = build.adapter.xmppHotfix;
     const transport = typeof rule === 'function' ? rule(build) : rule;
     if (!config.xmpp.enabled || !transport) return null;
-    const host = config.server.host === '0.0.0.0' ? '127.0.0.1' : config.server.host;
+    // The address this client reached us on (127.0.0.1 locally, the Radmin/LAN IP for friends).
+    const host = config.xmpp.advertiseHost || requestHost || (config.server.host === '0.0.0.0' ? '127.0.0.1' : config.server.host);
     const port = config.xmpp.port || config.server.port;
     const addr = transport === 'ws' ? `ws://${host}` : host;
     const block = (name) => [`[${name}]`, 'bUseSSL=false', `ServerAddr="${addr}"`, `ServerPort=${port}`].join('\r\n');
@@ -34,12 +35,12 @@ export function createCloudStorageService({ repos, config }) {
   }
 
   /** System files for a build: user files, plus Gallium's XMPP settings merged into DefaultEngine.ini. */
-  function systemEntries(build) {
+  function systemEntries(build, requestHost) {
     const entries = new Map();
     for (const [lower, file] of systemFiles(build)) {
       entries.set(lower, { name: path.basename(file), read: () => fs.readFileSync(file), uploaded: fs.statSync(file).mtime.toISOString() });
     }
-    const section = xmppSection(build);
+    const section = xmppSection(build, requestHost);
     if (section) {
       const existing = entries.get('defaultengine.ini');
       const own = existing ? existing.read() : null;
@@ -85,11 +86,11 @@ export function createCloudStorageService({ repos, config }) {
   }
 
   return {
-    listSystem(build) {
-      return [...systemEntries(build).values()].map((e) => describe(e.name, e.read(), e.uploaded, { doNotCache: true }));
+    listSystem(build, requestHost) {
+      return [...systemEntries(build, requestHost).values()].map((e) => describe(e.name, e.read(), e.uploaded, { doNotCache: true }));
     },
-    readSystem(build, name) {
-      const entry = systemEntries(build).get(String(name).toLowerCase());
+    readSystem(build, name, requestHost) {
+      const entry = systemEntries(build, requestHost).get(String(name).toLowerCase());
       if (!entry) throw Errors.notFound(`cloud storage file ${name}`);
       return entry.read();
     },

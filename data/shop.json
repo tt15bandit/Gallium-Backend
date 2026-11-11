@@ -1,5 +1,6 @@
 {
-  "rotation": { "enabled": true, "featured": 4, "daily": 6 },
   "featured": [],
-  "daily": []
+  "daily": [],
+  "season": [],
+  "rotation": { "enabled": false, "featured": 4, "daily": 6 }
 }

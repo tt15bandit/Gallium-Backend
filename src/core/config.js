@@ -19,6 +19,9 @@ export const DEFAULT_CONFIG = Object.freeze({
     enabled: true,
     // Extra listener for XMPP (raw TCP and WebSocket). 5.x-21.x hotfixes commonly use ws://127.0.0.1:5222.
     port: 5222,
+    // Address put in the XMPP hotfix. null = the address each client used to reach Gallium
+    // (127.0.0.1 locally, your Radmin/LAN IP for friends).
+    advertiseHost: null,
     domain: 'prod.ol.epicgames.com',
     mucDomain: 'muc.prod.ol.epicgames.com',
   },

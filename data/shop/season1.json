@@ -1,0 +1,9 @@
+{
+  "featured": [],
+  "daily": [],
+  "season": [
+    { "items": ["AthenaCharacter:CID_017_Athena_Commando_M"], "price": 1200, "seasonLevel": 15 },
+    { "items": ["AthenaCharacter:CID_028_Athena_Commando_F"], "price": 1200, "seasonLevel": 20 }
+  ],
+  "rotation": { "enabled": false }
+}
