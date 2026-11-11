@@ -50,7 +50,10 @@ export function registerFortniteRoutes(router) {
   });
 
   // ---- storefront ---------------------------------------------------------------------------
-  router.get('/fortnite/api/storefront/v2/catalog', requireAuth, (ctx) => ctx.json(ctx.services.catalog.get(ctx.version)));
+  router.get('/fortnite/api/storefront/v2/catalog', requireAuth, (ctx) => {
+    ctx.services.vbucksStore.noteVisitor(ctx.ip, ctx.auth.accountId);
+    ctx.json(ctx.services.catalog.get(ctx.version));
+  });
   router.get('/fortnite/api/storefront/v2/keychain', requireAuth, (ctx) => ctx.json(keychain(ctx)));
   router.get('/fortnite/api/storefront/v2/gift/check_eligibility/recipient/:recipientId/offer/:offerId', requireAccount, (ctx) => {
     const { catalog, friends, accounts } = ctx.services;
@@ -61,18 +64,16 @@ export function registerFortniteRoutes(router) {
     if (!friends.areFriends(ctx.auth.accountId, recipientId)) throw Errors.giftsDisabled(recipientId);
     ctx.json({ price: offer.entry.prices[0], items: offer.entry.itemGrants });
   });
-  router.get('/catalog/api/shared/bulk/offers', requireAuth, (ctx) => ctx.json({}));
-  router.post('/priceengine/api/shared/offers/price', requireAuth, (ctx) => ctx.json({}));
 
   // ---- calendar -----------------------------------------------------------------------------
   router.get('/fortnite/api/calendar/v1/timeline', requireAuth, (ctx) => ctx.json(ctx.services.content.timeline(ctx.version)));
 
   // ---- cloud storage ------------------------------------------------------------------------
-  router.get('/fortnite/api/cloudstorage/system', requireAuth, (ctx) => ctx.json(ctx.services.cloudStorage.listSystem(ctx.version, ctx.localHost)));
+  router.get('/fortnite/api/cloudstorage/system', requireAuth, (ctx) => ctx.json(ctx.services.cloudStorage.listSystem(ctx.version, ctx.localHost, ctx.localPort)));
   // No v2 dispatch config: 32.00 logs show a 204 here makes the client use the legacy (v1) file system.
   router.get('/fortnite/api/cloudstorage/system/config', requireAuth, (ctx) => ctx.noContent());
   router.get('/fortnite/api/cloudstorage/system/:filename', requireAuth, (ctx) => {
-    ctx.send(ctx.services.cloudStorage.readSystem(ctx.version, ctx.params.filename, ctx.localHost), 'application/octet-stream');
+    ctx.send(ctx.services.cloudStorage.readSystem(ctx.version, ctx.params.filename, ctx.localHost, ctx.localPort), 'application/octet-stream');
   });
   // Empty config makes builds that ask for user-cloud config fall back to the legacy (v1) system.
   router.get('/fortnite/api/cloudstorage/user/config', requireAuth, (ctx) => ctx.noContent());

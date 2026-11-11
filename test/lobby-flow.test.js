@@ -132,7 +132,8 @@ for (const build of BUILDS) {
       assert.ok(state.activeEvents.some((e) => e.eventType === `EventFlag.Season${build.season}`));
       const pages = await req('GET', '/content/api/pages/fortnite-game');
       assert.equal(pages.status, 200);
-      assert.ok(pages.json.battleroyalenews.news.motds.length > 0);
+      assert.ok(pages.json.battleroyalenews.news.messages.length > 0);
+      if (build.season >= 11) assert.ok(pages.json.battleroyalenews.news.motds.length > 0, 'Chapter 2+ MOTD tiles');
       const priv = await req('GET', `/fortnite/api/game/v2/privacy/account/${s.accountId}`);
       assert.equal(priv.json.optOutOfPublicLeaderboards, false);
     });

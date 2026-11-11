@@ -1,9 +1,56 @@
 {
+  "_comment": "Season 1. The rotation pool is every purchasable cosmetic in the 1.8 (Cert-CL-3741772) game files; defaults, Founder/Pre-Season gliders, victory umbrellas and the level 25 reward glider (Aerial Assault One) are left out. Prices follow the item's rarity unless listed.",
   "featured": [],
   "daily": [],
   "season": [
     { "items": ["AthenaCharacter:CID_017_Athena_Commando_M"], "price": 1200, "seasonLevel": 15 },
-    { "items": ["AthenaCharacter:CID_028_Athena_Commando_F"], "price": 1200, "seasonLevel": 20 }
+    { "items": ["AthenaCharacter:CID_028_Athena_Commando_F"], "price": 1200, "seasonLevel": 20 },
+    { "items": ["AthenaPickaxe:Pickaxe_Lockjaw"], "price": 1500, "seasonLevel": 20 }
   ],
-  "rotation": { "enabled": false }
+  "rotation": {
+    "enabled": true,
+    "featured": 2,
+    "daily": 4,
+    "pool": [
+      "AthenaCharacter:CID_009_Athena_Commando_M",
+      "AthenaCharacter:CID_010_Athena_Commando_M",
+      "AthenaCharacter:CID_011_Athena_Commando_M",
+      "AthenaCharacter:CID_012_Athena_Commando_M",
+      "AthenaCharacter:CID_013_Athena_Commando_F",
+      "AthenaCharacter:CID_014_Athena_Commando_F",
+      "AthenaCharacter:CID_015_Athena_Commando_F",
+      "AthenaCharacter:CID_016_Athena_Commando_F",
+      "AthenaCharacter:CID_018_Athena_Commando_M",
+      "AthenaCharacter:CID_019_Athena_Commando_M",
+      "AthenaCharacter:CID_020_Athena_Commando_M",
+      "AthenaCharacter:CID_021_Athena_Commando_F",
+      "AthenaCharacter:CID_022_Athena_Commando_F",
+      "AthenaCharacter:CID_023_Athena_Commando_F",
+      "AthenaCharacter:CID_024_Athena_Commando_F",
+      "AthenaCharacter:CID_025_Athena_Commando_M",
+      "AthenaCharacter:CID_026_Athena_Commando_M",
+      "AthenaCharacter:CID_027_Athena_Commando_F",
+      "AthenaCharacter:CID_029_Athena_Commando_F_Halloween",
+      "AthenaCharacter:CID_030_Athena_Commando_M_Halloween",
+      "AthenaGlider:Glider_Bold",
+      "AthenaGlider:Glider_Flames",
+      "AthenaGlider:Glider_FlowerPOwer",
+      "AthenaGlider:Glider_MiG",
+      "AthenaGlider:Glider_Military",
+      "AthenaGlider:Glider_Prismatic",
+      "AthenaGlider:Glider_RoadTrip",
+      "AthenaGlider:Glider_Stealth",
+      "AthenaGlider:Glider_Venom",
+      "AthenaGlider:Glider_Voyager",
+      "AthenaGlider:Glider_Warthog",
+      "AthenaPickaxe:BoltonPickaxe",
+      "AthenaPickaxe:HalloweenScythe",
+      "AthenaPickaxe:HappyPickaxe",
+      "AthenaPickaxe:Pickaxe_Deathvalley",
+      "AthenaPickaxe:Pickaxe_Flamingo",
+      "AthenaPickaxe:SickleBatPickaxe",
+      "AthenaPickaxe:SkiIcePickaxe",
+      "AthenaPickaxe:SpikyPickaxe"
+    ]
+  }
 }

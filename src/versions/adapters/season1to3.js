@@ -14,7 +14,7 @@ export default defineAdapter({
   matches: (b) => !atLeast(b, 3, 5),
   profileIds: ['athena', 'profile0', 'common_core', 'common_public', 'creative', 'collections', 'metadata', 'theater0', 'outpost0', 'collection_book_people0', 'collection_book_schematics0', 'campaign'],
   currencyProfile: 'profile0',
-  features: { cosmeticLocker: false, shopSectionMeta: false, legacyTokens: true },
+  features: { cosmeticLocker: false, shopSectionMeta: false, legacyTokens: true, vbucksStore: true },
   progression: {
     maxLevel: 100,
     battlePassTiers: (b) => (b.season <= 2 ? 70 : 100),

@@ -20,14 +20,14 @@ const RARITIES = ['uncommon', 'rare', 'epic', 'legendary'];
  *   "featured": [{ "items": ["AthenaCharacter:CID_..."], "price": 1500 }],
  *   "daily":    [{ "items": ["AthenaPickaxe:..."], "price": 800 }],
  *   "season":   [{ "items": ["AthenaCharacter:CID_028_Athena_Commando_F"], "price": 1200, "seasonLevel": 20 }],
- *   "rotation": { "enabled": false, "featured": 4, "daily": 6 }
+ *   "rotation": { "enabled": false, "featured": 4, "daily": 6, "pool": ["AthenaCharacter:...", ...] }
  * }
  * "featured" -> BRWeeklyStorefront, "daily" -> BRDailyStorefront, "season" -> BRSeasonStorefront
  * (the Season Shop tab; storefront names taken from the 1.8 game files). Season Shop offers can
  * require a season level / wins via the SeasonLevelReq / SeasonWinsReq meta keys the client reads.
  * Optional rotation adds random offers each UTC day from cosmetics the build's season can use.
  */
-export function createCatalogService({ dataFiles, cosmetics, progression, log }) {
+export function createCatalogService({ dataFiles, cosmetics, progression, vbucksStore = null, config = null, log }) {
   const cache = new Map();
 
   function dayBounds() {
@@ -66,22 +66,27 @@ export function createCatalogService({ dataFiles, cosmetics, progression, log })
       sortPriority,
       catalogGroupPriority: 0,
     };
+    // 1.8 rejects the whole catalog ("0 total offers") when entries carry a "meta" object, so
+    // older builds only get the metaInfo key/value list; newer builds get both.
     const meta = {};
     if (build.features.shopSectionMeta) Object.assign(meta, { SectionId: section, TileSize: tileSize });
     if (Number.isInteger(reqs.seasonLevel) && reqs.seasonLevel > 0) meta.SeasonLevelReq = String(reqs.seasonLevel);
     if (Number.isInteger(reqs.seasonWins) && reqs.seasonWins > 0) meta.SeasonWinsReq = String(reqs.seasonWins);
-    if (Object.keys(meta).length) {
-      entry.meta = meta;
-      entry.metaInfo = Object.entries(meta).map(([key, value]) => ({ key, value }));
-    }
+    entry.metaInfo = Object.entries(meta).map(([key, value]) => ({ key, value }));
+    if (build.features.shopSectionMeta) entry.meta = meta;
     return build.adapter.catalogEntry(entry, build);
   }
 
-  function rotationPicks(build, dayKey, featuredCount, dailyCount, exclude) {
-    const pool = cosmetics
-      .forSeason(build.season)
-      .map((def) => cosmetics.templateIdOf(def))
-      .filter((t) => ROTATION_TYPES.includes(itemType(t)) && !exclude.has(t.toLowerCase()) && !/:(EID_DanceMoves|DefaultPickaxe|DefaultGlider)$/i.test(t));
+  /**
+   * Daily picks. With `explicitPool` (rotation.pool in the shop file) only those items are used,
+   * e.g. exactly the cosmetics that exist in a given build; otherwise every cosmetic introduced
+   * by the build's season.
+   */
+  function rotationPicks(build, dayKey, featuredCount, dailyCount, exclude, explicitPool = null) {
+    const source = Array.isArray(explicitPool) && explicitPool.length
+      ? explicitPool.filter((t) => typeof t === 'string' && t.includes(':'))
+      : cosmetics.forSeason(build.season).map((def) => cosmetics.templateIdOf(def));
+    const pool = source.filter((t) => ROTATION_TYPES.includes(itemType(t)) && !exclude.has(t.toLowerCase()) && !/:(EID_DanceMoves|DefaultPickaxe|DefaultGlider)$/i.test(t));
     const rand = seededRandom(`${dayKey}:${build.season}`);
     const take = (filter, n) => {
       const candidates = pool.filter(filter);
@@ -113,7 +118,7 @@ export function createCatalogService({ dataFiles, cosmetics, progression, log })
     const seasonManual = manual(config.season);
     const used = new Set([...featuredManual, ...dailyManual, ...seasonManual].flatMap((e) => e.items.map((t) => t.toLowerCase())));
     const rotation = config.rotation || {};
-    const picks = rotation.enabled === true ? rotationPicks(build, dayKey, rotation.featured ?? 4, rotation.daily ?? 6, used) : { featured: [], daily: [] };
+    const picks = rotation.enabled === true ? rotationPicks(build, dayKey, rotation.featured ?? 4, rotation.daily ?? 6, used, rotation.pool) : { featured: [], daily: [] };
 
     let sort = 0;
     const featured = [
@@ -132,6 +137,9 @@ export function createCatalogService({ dataFiles, cosmetics, progression, log })
       { name: 'BRDailyStorefront', catalogEntries: daily },
       { name: 'BRSeasonStorefront', catalogEntries: seasonShop },
     ];
+    if (vbucksStore && build.features.vbucksStore && config?.store?.fakeVbucksPurchases !== false) {
+      storefronts.push({ name: 'CurrencyStorefront', catalogEntries: vbucksStore.catalogEntries() });
+    }
     const bpOffers = progression.offersFor(build);
     const battlePassById = new Map();
     if (bpOffers.length) {

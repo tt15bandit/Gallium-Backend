@@ -31,6 +31,9 @@ test('Season 1: the hotfix points XMPP at Gallium over raw TCP, and that address
   assert.match(text, /^\[OnlineSubsystemMcp\.Xmpp\]/m);
   assert.match(text, /^\[OnlineSubsystemMcp\.Xmpp Prod\]/m);
   assert.equal(setting(text, 'bUseSSL'), 'false');
+  assert.equal(setting(text, 'bUsePlainTextAuth'), 'true', 'libjingle refuses PLAIN over plain TCP without this');
+  assert.equal(setting(text, 'Domain'), '"prod.ol.epicgames.com"');
+  assert.doesNotMatch(text, /bEnableWebsockets/, 'raw TCP builds do not get the websocket switch');
   assert.equal(setting(text, 'ServerAddr'), '"127.0.0.1"');
   const port = Number(setting(text, 'ServerPort'));
   assert.equal(port, g.xmppPort, 'straight to the XMPP listener, not through an HTTP-only launcher proxy');
@@ -50,7 +53,9 @@ test('XMPP transport in the hotfix follows the build', async () => {
   ];
   for (const [ua, addr] of expect) {
     const s = await login(g.base, `hf${Math.random().toString(36).slice(2, 8)}@t.dev`, 'pw', ua);
-    assert.equal(setting((await hotfix(s, ua)).text, 'ServerAddr'), addr, ua);
+    const { text } = await hotfix(s, ua);
+    assert.equal(setting(text, 'ServerAddr'), addr, ua);
+    assert.equal(/^\[XMPP\]\r?\nbEnableWebsockets=true/m.test(text), addr.includes('ws://'), `websocket switch for ${ua}`);
   }
   const c5 = await login(g.base, 'hfc5@t.dev', 'pw', UA.v32_00);
   assert.equal((await hotfix(c5, UA.v32_00)).entry, null, 'Chapter 5 keeps its own XMPP settings');

@@ -35,6 +35,8 @@ export const baseAdapter = {
     // Plain 32-hex access tokens instead of "eg1~" JWTs. Chapter 1 predates eg1 tokens, and
     // 1.8's XMPP rejects the long token as "XMPP log-in credentials not valid".
     legacyTokens: false,
+    // STORE tab V-Bucks packs bought through the in-game EpicPurchaseFlow browser (1.8 game files).
+    vbucksStore: false,
   },
   progression: {
     // XP needed to go from `level` to `level + 1`.

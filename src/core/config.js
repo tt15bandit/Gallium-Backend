@@ -54,6 +54,10 @@ export const DEFAULT_CONFIG = Object.freeze({
     heartbeatTimeoutSeconds: 90,
   },
   admin: { apiKey: null },
+  store: {
+    // STORE tab V-Bucks packs open Gallium's checkout page and grant the V-Bucks for free.
+    fakeVbucksPurchases: true,
+  },
   data: { dir: 'data' },
 });
 

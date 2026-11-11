@@ -30,7 +30,7 @@ export function spend(profile, amount) {
 export function grant(profile, amount) {
   const entry = profile.findItem('Currency:MtxPurchased');
   if (entry) profile.setQuantity(entry.id, (entry.item.quantity || 0) + amount);
-  else profile.addItem('Currency:MtxPurchased', 'Currency:MtxPurchased', { platform: 'EpicPC' }, amount);
+  else profile.addItem('Currency:MtxPurchased', 'Currency:MtxPurchased', { platform: 'Shared' }, amount);
 }
 
 export function setBalance(profile, amount) {
@@ -42,8 +42,13 @@ export function setBalance(profile, amount) {
 /** Bring profile0's mirrored balance in line with common_core. */
 export function mirrorToProfile0(profile0, balance) {
   const entry = profile0.findItem('Currency:MtxPurchased');
-  if (!entry) profile0.addItem('Currency:MtxPurchased', 'Currency:MtxPurchased', { platform: 'EpicPC' }, balance);
-  else if (balanceOf(profile0) !== balance) {
+  if (!entry) {
+    profile0.addItem('Currency:MtxPurchased', 'Currency:MtxPurchased', { platform: 'Shared' }, balance);
+    return;
+  }
+  // 1.x shows 0 V-Bucks for currency tied to a platform it doesn't consider its own.
+  if (entry.item.attributes.platform !== 'Shared') profile0.setItemAttr(entry.id, 'platform', 'Shared');
+  if (balanceOf(profile0) !== balance) {
     for (const [id, item] of profile0.items) if (isMtx(item.templateId) && id !== entry.id && item.quantity) profile0.setQuantity(id, 0);
     profile0.setQuantity(entry.id, balance);
   }

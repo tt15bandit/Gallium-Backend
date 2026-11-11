@@ -121,7 +121,7 @@ All optional, and re-read when changed (no restart needed, except `cosmetics.jso
 | File | Purpose |
 |---|---|
 | `cosmetics.json` | item list from `npm run sync-cosmetics` (id, type, introduction season, rarity, variants) |
-| `shop/season<N>.json` (fallback `shop.json`) | that season's shop: `featured` (weekly), `daily`, `season` (Season Shop, optional `seasonLevel` / `seasonWins`), opt-in random `rotation`. Edit with `npm run cli -- shop add/remove/list` |
+| `shop/season<N>.json` (fallback `shop.json`) | that season's shop: `featured` (weekly), `daily`, `season` (Season Shop, optional `seasonLevel` / `seasonWins`), opt-in daily `rotation` (limit it to specific items with `rotation.pool`; `shop/season1.json` ships with the purchasable cosmetics found in the 1.8 game files). Edit with `npm run cli -- shop add/remove/list` |
 | `content/news.json`, `content/news-season<N>.json` | lobby news: `[{ "title", "body", "image"? }]`; `content/news.png` replaces the default image |
 | `battlepass/season<N>.json` | battle pass offer ids and per-tier rewards for season N |
 | `quests/season<N>.json`, `quests/default.json` | daily / weekly quest pools |
@@ -133,6 +133,15 @@ Battle pass offer ids, tier rewards and quest template ids are game data that di
 season. Gallium ships the engines for them but no invented data. Fill these files from your
 build's game files (formats are documented at the top of `src/services/progression.js` and
 `src/services/quests.js`).
+
+## V-Bucks store (STORE tab)
+
+On Chapter 1 builds the STORE tab lists V-Bucks packs (1,000 to 13,500, matching the pack art
+in the 1.8 game files). Clicking one opens the game's own purchase browser. A hotfix points
+`[EpicPurchaseFlow]` at Gallium's checkout page (`/gallium/purchase`), which shows the pack, the
+account, and the price crossed out as free. **Place order** adds the V-Bucks immediately and
+reports a receipt back to the game. Nothing is charged. Turn it off with
+`store.fakeVbucksPurchases: false`.
 
 ## Game servers and matchmaking
 

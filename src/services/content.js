@@ -63,12 +63,13 @@ export function createContentService({ dataFiles }) {
       battleroyalenews: {
         news: {
           _type: 'Battle Royale News',
-          motds: news.map((m, i) => ({ entryType: 'Text', image: m.image, tileImage: m.image, hidden: false, videoMute: false, tabTitleOverride: m.title, _type: 'CommonUI Simple Message MOTD', title: m.title, body: m.body, videoLoop: false, videoStreamingEnabled: false, sortingPriority: 0, id: m.id, spotlight: false })),
-          // 1.8 (UFortAthenaNewsWidget) reads these, including messageType and image.
-          messages: news.map((m) => ({ image: m.image, hidden: false, messageType: 'normal', _type: 'CommonUI Simple Message Base', adspace: '', title: m.title, body: m.body, spotlight: false })),
+          // Only these fields: extra ones (messageType, style, header) left the 1.8 news modal blank.
+          messages: news.map((m) => ({ _type: 'CommonUI Simple Message Base', title: m.title, body: m.body, image: m.image, hidden: false, spotlight: false })),
+          // Chapter 2+ lobbies read the MOTD tiles instead.
+          ...(build.season >= 11
+            ? { motds: news.map((m) => ({ entryType: 'Text', image: m.image, tileImage: m.image, hidden: false, videoMute: false, tabTitleOverride: m.title, _type: 'CommonUI Simple Message MOTD', title: m.title, body: m.body, videoLoop: false, videoStreamingEnabled: false, sortingPriority: 0, id: m.id, spotlight: false })) }
+            : {}),
         },
-        header: '',
-        style: 'None',
         ...meta('battleroyalenews'),
         lastModified: newsDate,
       },
@@ -87,6 +88,12 @@ export function createContentService({ dataFiles }) {
         ...meta('shop-sections'),
       },
     };
+    // Chapter 1 frontends predate these sections; keep their page to what they know.
+    if (build.season <= 10) {
+      delete page.emergencynoticev2;
+      delete page.tournamentinformation;
+      delete page.shopSections;
+    }
     page = build.adapter.contentPages(build, page);
     const overrides = dataFiles.read('content/fortnite-game.json');
     if (overrides && typeof overrides === 'object') page = { ...page, ...overrides };

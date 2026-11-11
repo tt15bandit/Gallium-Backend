@@ -30,26 +30,43 @@ export function createCloudStorageService({ repos, config }) {
     const host = config.xmpp.advertiseHost || requestHost || (config.server.host === '0.0.0.0' ? '127.0.0.1' : config.server.host);
     const port = config.xmpp.port || config.server.port;
     const addr = transport === 'ws' ? `ws://${host}` : host;
-    const block = (name) => [`[${name}]`, 'bUseSSL=false', `ServerAddr="${addr}"`, `ServerPort=${port}`].join('\r\n');
-    return `${block('OnlineSubsystemMcp.Xmpp')}\r\n\r\n${block('OnlineSubsystemMcp.Xmpp Prod')}\r\n`;
+    // bUsePlainTextAuth lets the client send SASL PLAIN over an unencrypted connection; without it
+    // 1.8's libjingle stops with "XMPP log-in credentials not valid (6)" (ERROR_AUTH).
+    const block = (name) => [`[${name}]`, 'bUseSSL=false', 'bUsePlainTextAuth=true', `Domain="${config.xmpp.domain}"`, `ServerAddr="${addr}"`, `ServerPort=${port}`].join('\r\n');
+    let ini = `${block('OnlineSubsystemMcp.Xmpp')}\r\n\r\n${block('OnlineSubsystemMcp.Xmpp Prod')}\r\n`;
+    if (transport === 'ws') ini += '\r\n[XMPP]\r\nbEnableWebsockets=true\r\n';
+    return ini;
   }
 
-  /** System files for a build: user files, plus Gallium's XMPP settings merged into DefaultEngine.ini. */
-  function systemEntries(build, requestHost) {
+  /**
+   * DefaultGame.ini section pointing the in-game purchase browser (EpicPurchaseFlow, key per
+   * environment; the client launches with -epicenv=Prod) at Gallium's checkout page.
+   */
+  function purchaseFlowSection(build, requestHost, requestPort) {
+    if (!build.features.vbucksStore || config.store?.fakeVbucksPurchases === false) return null;
+    const host = requestHost || (config.server.host === '0.0.0.0' ? '127.0.0.1' : config.server.host);
+    const url = `http://${host}:${requestPort || config.server.port}/gallium/purchase`;
+    return `[EpicPurchaseFlow]\r\nProd="${url}"\r\nStage="${url}"\r\nGameDev="${url}"\r\nCI="${url}"\r\n`;
+  }
+
+  /** Merge a generated section into a hotfix file unless the user's own file already sets it. */
+  function merge(entries, lowerName, displayName, section, ownSectionRe) {
+    if (!section) return;
+    const existing = entries.get(lowerName);
+    const own = existing ? existing.read() : null;
+    if (own && ownSectionRe.test(own.toString('utf8'))) return;
+    const data = own ? Buffer.concat([own, Buffer.from(`\r\n${section}`)]) : Buffer.from(section);
+    entries.set(lowerName, { name: existing?.name || displayName, read: () => data, uploaded: existing?.uploaded || startedAt });
+  }
+
+  /** System files for a build: user files, plus Gallium's XMPP / purchase-flow settings merged in. */
+  function systemEntries(build, requestHost, requestPort) {
     const entries = new Map();
     for (const [lower, file] of systemFiles(build)) {
       entries.set(lower, { name: path.basename(file), read: () => fs.readFileSync(file), uploaded: fs.statSync(file).mtime.toISOString() });
     }
-    const section = xmppSection(build, requestHost);
-    if (section) {
-      const existing = entries.get('defaultengine.ini');
-      const own = existing ? existing.read() : null;
-      // A user-supplied XMPP section wins; otherwise ours is appended (or becomes the file).
-      if (!own || !/\[OnlineSubsystemMcp\.Xmpp/i.test(own.toString('utf8'))) {
-        const data = own ? Buffer.concat([own, Buffer.from(`\r\n${section}`)]) : Buffer.from(section);
-        entries.set('defaultengine.ini', { name: existing?.name || 'DefaultEngine.ini', read: () => data, uploaded: existing?.uploaded || startedAt });
-      }
-    }
+    merge(entries, 'defaultengine.ini', 'DefaultEngine.ini', xmppSection(build, requestHost), /\[OnlineSubsystemMcp\.Xmpp/i);
+    merge(entries, 'defaultgame.ini', 'DefaultGame.ini', purchaseFlowSection(build, requestHost, requestPort), /\[EpicPurchaseFlow\]/i);
     return entries;
   }
 
@@ -86,11 +103,11 @@ export function createCloudStorageService({ repos, config }) {
   }
 
   return {
-    listSystem(build, requestHost) {
-      return [...systemEntries(build, requestHost).values()].map((e) => describe(e.name, e.read(), e.uploaded, { doNotCache: true }));
+    listSystem(build, requestHost, requestPort) {
+      return [...systemEntries(build, requestHost, requestPort).values()].map((e) => describe(e.name, e.read(), e.uploaded, { doNotCache: true }));
     },
-    readSystem(build, name, requestHost) {
-      const entry = systemEntries(build, requestHost).get(String(name).toLowerCase());
+    readSystem(build, name, requestHost, requestPort) {
+      const entry = systemEntries(build, requestHost, requestPort).get(String(name).toLowerCase());
       if (!entry) throw Errors.notFound(`cloud storage file ${name}`);
       return entry.read();
     },

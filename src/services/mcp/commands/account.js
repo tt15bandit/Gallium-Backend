@@ -59,8 +59,23 @@ export const accountCommands = {
     { profiles: ['common_core'] },
   ),
 
-  // Gallium has no real-money store, so there are never offline purchases to redeem.
-  RedeemRealMoneyPurchases: command(() => {}, { profiles: ['common_core'] }),
+  // Store purchases are fulfilled the moment the checkout page completes, so nothing is pending.
+  RedeemRealMoneyPurchases: command(() => {}, { profiles: ['common_core', 'profile0'] }),
+
+  /**
+   * Sent after the purchase browser reports a receipt. Gallium already granted the V-Bucks when
+   * the checkout page completed, so this only confirms the receipt (no double grant) and lets the
+   * response carry the updated balance. The payload is logged to keep the format visible.
+   */
+  VerifyRealMoneyPurchase: command(
+    (cmd) => {
+      const core = cmd.getProfile('common_core');
+      const known = cmd.services.vbucksStore.isFulfilled(core, cmd.body);
+      cmd.log.info(`VerifyRealMoneyPurchase from ${cmd.accountId}: ${known ? 'known Gallium receipt' : 'unknown receipt'} ${JSON.stringify(cmd.body).slice(0, 500)}`);
+      cmd.forceFullProfile();
+    },
+    { profiles: ['common_core', 'profile0'] },
+  ),
 
   SetBattleRoyaleBanner: command(
     (cmd) => {

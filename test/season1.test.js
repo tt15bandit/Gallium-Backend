@@ -62,6 +62,7 @@ test('Season Shop (BRSeasonStorefront) offers carry SeasonLevelReq / SeasonWinsR
   assert.equal(season.length, 2);
   const trooper = season.find((e) => e.itemGrants[0].templateId === 'AthenaCharacter:CID_017_Athena_Commando_M');
   assert.deepEqual(trooper.metaInfo, [{ key: 'SeasonLevelReq', value: '15' }]);
+  assert.equal('meta' in trooper, false, '1.8 drops every offer when entries carry a "meta" object');
   const pickaxe = season.find((e) => e.itemGrants[0].templateId.startsWith('AthenaPickaxe'));
   assert.deepEqual(pickaxe.metaInfo, [{ key: 'SeasonWinsReq', value: '1' }]);
 
@@ -87,7 +88,10 @@ test('news has the fields 1.8 reads, and the image is served', async () => {
   const s = await login(g.base, 's1news@atlas.dev', 'pw', UA.cert);
   const pages = (await call(g.base, 'GET', '/content/api/pages/fortnite-game', { ua: UA.cert })).json;
   const msg = pages.battleroyalenews.news.messages[0];
-  assert.equal(msg.messageType, 'normal');
+  // Exactly the fields 1.8 accepts; extra ones (messageType, style...) blanked the news modal.
+  assert.deepEqual(Object.keys(msg).sort(), ['_type', 'body', 'hidden', 'image', 'spotlight', 'title']);
+  assert.equal(pages.battleroyalenews.news.motds, undefined, 'no Chapter 2 MOTDs for 1.x');
+  assert.equal(pages.shopSections, undefined);
   assert.equal(msg._type, 'CommonUI Simple Message Base');
   assert.match(msg.image, new RegExp(`^http://127\\.0\\.0\\.1:${g.port}/gallium/assets/news\\.png`));
   const img = await call(g.base, 'GET', new URL(msg.image).pathname);
@@ -99,6 +103,24 @@ test('news has the fields 1.8 reads, and the image is served', async () => {
   assert.deepEqual(custom.map((m) => m.title), ['Welcome', 'Second']);
   assert.equal(custom[1].image, 'http://example.invalid/a.png');
   void s;
+});
+
+test('profile0 V-Bucks use the Shared platform (existing items are migrated)', async () => {
+  const s = await login(g.base, 's1shared@atlas.dev', 'pw', UA.cert);
+  const p0 = profileOf(await mcp(g.base, s, 'QueryProfile', 'profile0', {}, { ua: UA.cert }));
+  assert.equal(p0.items['Currency:MtxPurchased'].attributes.platform, 'Shared');
+  const p = g.services.profiles.load(s.accountId, 'profile0', g.services.versions.resolve(UA.cert));
+  p.setItemAttr('Currency:MtxPurchased', 'platform', 'EpicPC');
+  g.services.profiles.save(p);
+  assert.equal(profileOf(await mcp(g.base, s, 'QueryProfile', 'profile0', {}, { ua: UA.cert })).items['Currency:MtxPurchased'].attributes.platform, 'Shared');
+});
+
+test('rotation.pool limits the daily shop to listed items', async () => {
+  fs.writeFileSync(path.join(g.dataDir, 'shop', 'season2.json'), JSON.stringify({ rotation: { enabled: true, featured: 1, daily: 2, pool: ['AthenaCharacter:CID_028_Athena_Commando_F', 'AthenaGlider:Glider_ID_001', 'AthenaPickaxe:Pickaxe_ID_013_Teslacoil'] } }));
+  const s = await login(g.base, 's2pool@atlas.dev', 'pw', 'Fortnite/++Fortnite+Release-2.5-CL-3889387 Windows/10');
+  const cat = (await call(g.base, 'GET', '/fortnite/api/storefront/v2/catalog', { token: s.token, ua: 'Fortnite/++Fortnite+Release-2.5-CL-3889387 Windows/10' })).json;
+  assert.deepEqual(front(cat, 'BRWeeklyStorefront').map((e) => e.itemGrants[0].templateId), ['AthenaCharacter:CID_028_Athena_Commando_F']);
+  assert.deepEqual(front(cat, 'BRDailyStorefront').map((e) => e.itemGrants[0].templateId).sort(), ['AthenaGlider:Glider_ID_001', 'AthenaPickaxe:Pickaxe_ID_013_Teslacoil']);
 });
 
 test('global chat rooms endpoint (1.x) and the shared MUC room', async () => {

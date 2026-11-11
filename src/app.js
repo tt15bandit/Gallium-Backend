@@ -13,6 +13,7 @@ import { createProfileService } from './services/profiles/index.js';
 import { createProgressionService } from './services/progression.js';
 import { createQuestService } from './services/quests.js';
 import { createCatalogService } from './services/catalog.js';
+import { createVbucksStore } from './services/vbucksStore.js';
 import { createGameServerRegistry } from './services/gameServers.js';
 import { createMatchmakingService } from './services/matchmaking.js';
 import { createCloudStorageService } from './services/cloudStorage.js';
@@ -28,6 +29,7 @@ import { registerSocialRoutes } from './routes/social.js';
 import { registerMiscRoutes } from './routes/misc.js';
 import { registerLockerRoutes } from './routes/locker.js';
 import { registerGalliumRoutes } from './routes/gallium.js';
+import { registerStoreRoutes } from './routes/store.js';
 
 /**
  * Wires every service together. Used by the server entry point, the CLI and the tests, so all
@@ -49,7 +51,8 @@ export function createApp({ config, log, partyDisconnectGraceMs }) {
   const profiles = createProfileService({ db, repos, config, cosmetics, log });
   const progression = createProgressionService({ dataFiles, cosmetics, log });
   const quests = createQuestService({ dataFiles, progression, cosmetics, log });
-  const catalog = createCatalogService({ dataFiles, cosmetics, progression, log });
+  const vbucksStore = createVbucksStore({ repos, profiles, accounts, versions, config, log });
+  const catalog = createCatalogService({ dataFiles, cosmetics, progression, vbucksStore, config, log });
   const gameServers = createGameServerRegistry({ config, log });
   const matchmaking = createMatchmakingService({ config, log, gameServers, repos });
   const cloudStorage = createCloudStorageService({ repos, config });
@@ -57,7 +60,7 @@ export function createApp({ config, log, partyDisconnectGraceMs }) {
   const stats = createStatsService({ repos });
   const locker = createLockerService({ repos, profiles, log });
 
-  const services = { config, log, db, repos, versions, dataFiles, cosmetics, accounts, auth, xmpp, friends, party, profiles, progression, quests, catalog, gameServers, matchmaking, cloudStorage, content, stats, locker };
+  const services = { config, log, db, repos, versions, dataFiles, cosmetics, accounts, auth, xmpp, friends, party, profiles, progression, quests, catalog, vbucksStore, gameServers, matchmaking, cloudStorage, content, stats, locker };
   services.mcp = createMcpService({ db, profiles, services, log });
   services.admin = createAdminService({ accounts, profiles, auth, versions, cosmetics, progression, stats, quests });
 
@@ -69,6 +72,7 @@ export function createApp({ config, log, partyDisconnectGraceMs }) {
   registerMiscRoutes(router);
   registerLockerRoutes(router);
   registerGalliumRoutes(router);
+  registerStoreRoutes(router);
   for (const adapter of versions.adapters) adapter.registerRoutes?.(router, services);
 
   return {

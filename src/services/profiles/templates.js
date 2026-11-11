@@ -80,7 +80,8 @@ export function buildTemplate(profileId, build, { config, cosmetics }) {
   let stats = {};
 
   const addCurrency = () => {
-    items['Currency:MtxPurchased'] = { templateId: 'Currency:MtxPurchased', attributes: { platform: 'EpicPC' }, quantity: config.accounts.startingVbucks };
+    // "Shared" counts on every MTX platform (old builds don't necessarily consider themselves EpicPC).
+    items['Currency:MtxPurchased'] = { templateId: 'Currency:MtxPurchased', attributes: { platform: 'Shared' }, quantity: config.accounts.startingVbucks };
   };
 
   switch (profileId) {
