@@ -53,6 +53,14 @@ only proxy HTTP (ATLAS Link on 3551, for example) don't get in the way. If your 
 `data/cloudstorage/DefaultEngine.ini` already has an `[OnlineSubsystemMcp.Xmpp]` section,
 yours is used instead.
 
+### Friends over Radmin / LAN
+
+Set `server.host` to `0.0.0.0` in `gallium.config.json` so Gallium listens on every interface.
+Friends point their launcher's backend at your Radmin or LAN IP, port `1523`. Everything Gallium
+hands back to a client (XMPP hotfix, matchmaking URL, news image) uses the address that client
+reached you on. Windows Firewall has to allow Node.js inbound. The admin and game-server APIs
+still only accept your own machine unless you set API keys.
+
 Logins: `-AUTH_TYPE=epic -AUTH_LOGIN=<name>@anything -AUTH_PASSWORD=<password>`. With
 `accounts.autoRegister` (on by default) the first login creates the account with that
 password, and the display name is the part before `@`. Exchange codes
@@ -113,7 +121,8 @@ All optional, and re-read when changed (no restart needed, except `cosmetics.jso
 | File | Purpose |
 |---|---|
 | `cosmetics.json` | item list from `npm run sync-cosmetics` (id, type, introduction season, rarity, variants) |
-| `shop.json` | Item Shop: manual `featured` / `daily` offers plus daily auto-rotation |
+| `shop/season<N>.json` (fallback `shop.json`) | that season's shop: `featured` (weekly), `daily`, `season` (Season Shop, optional `seasonLevel` / `seasonWins`), opt-in random `rotation`. Edit with `npm run cli -- shop add/remove/list` |
+| `content/news.json`, `content/news-season<N>.json` | lobby news: `[{ "title", "body", "image"? }]`; `content/news.png` replaces the default image |
 | `battlepass/season<N>.json` | battle pass offer ids and per-tier rewards for season N |
 | `quests/season<N>.json`, `quests/default.json` | daily / weekly quest pools |
 | `cloudstorage/*.ini`, `cloudstorage/season<N>/*.ini` | hotfix files served to clients |
