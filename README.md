@@ -110,6 +110,7 @@ All optional, and re-read when changed (no restart needed, except `cosmetics.jso
 | `battlepass/season<N>.json` | battle pass offer ids and per-tier rewards for season N |
 | `quests/season<N>.json`, `quests/default.json` | daily / weekly quest pools |
 | `cloudstorage/*.ini`, `cloudstorage/season<N>/*.ini` | hotfix files served to clients |
+| `keychain.json`, `keychain/season<N>.json` | `["<pakGuid>:<base64 key>:<item>", ...]` keys for encrypted cosmetic paks. Without it a harmless placeholder key is sent (some builds, e.g. 5.41, fail login on an empty keychain) |
 | `content/fortnite-game.json` | keys merged over the generated `/content/api/pages/fortnite-game` |
 
 Battle pass offer ids, tier rewards and quest template ids are game data that differs per

@@ -29,6 +29,17 @@ test('catalog entries have the storefront v2 shape', async () => {
   assert.equal(findEntry(old, 'AthenaCharacter:CID_028_Athena_Commando_F').meta, undefined, 'no section meta for Chapter 1');
 });
 
+test('keychain serves keys from data/keychain.json when present', async () => {
+  const s = await login(g.base, 'keys@test.dev');
+  const real = ['0A1B2C3D4E5F60718293A4B5C6D7E8F9:dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleTEyMzQ=:CID_028_Athena_Commando_F'];
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  fs.writeFileSync(path.join(g.dataDir, 'keychain.json'), JSON.stringify([...real, 'not-a-key']));
+  assert.deepEqual((await call(g.base, 'GET', '/fortnite/api/storefront/v2/keychain', { token: s.token })).json, real);
+  fs.unlinkSync(path.join(g.dataDir, 'keychain.json'));
+  assert.match((await call(g.base, 'GET', '/fortnite/api/storefront/v2/keychain', { token: s.token })).json[0], /^47414C4C49554D/);
+});
+
 test('purchase: charges V-Bucks, grants the item, reports loot and multiUpdate', async () => {
   const s = await login(g.base, 'buyer@test.dev');
   g.services.admin.setVbucks(s.accountId, 3000);

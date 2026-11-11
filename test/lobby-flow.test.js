@@ -119,7 +119,11 @@ for (const build of BUILDS) {
       const cat = await req('GET', '/fortnite/api/storefront/v2/catalog');
       assert.equal(cat.status, 200);
       assert.deepEqual(cat.json.storefronts.map((f) => f.name).slice(0, 2), ['BRWeeklyStorefront', 'BRDailyStorefront']);
-      assert.deepEqual((await req('GET', '/fortnite/api/storefront/v2/keychain?numKeysDownloaded=0')).json, []);
+      // 5.41 aborts login on an empty keychain ("Unable to parse json"), so it is never empty.
+      const keys = (await req('GET', '/fortnite/api/storefront/v2/keychain?numKeysDownloaded=0&rvn=1')).json;
+      assert.ok(Array.isArray(keys) && keys.length > 0);
+      for (const k of keys) assert.match(k, /^[0-9A-F]{32}:[A-Za-z0-9+/=]+:/i);
+      assert.ok(!keys[0].startsWith('0'.repeat(32)), 'never the zero GUID used by unencrypted paks');
       const tl = await req('GET', '/fortnite/api/calendar/v1/timeline');
       const state = tl.json.channels['client-events'].states[0];
       assert.equal(state.state.seasonNumber, build.season);

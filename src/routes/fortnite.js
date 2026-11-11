@@ -2,6 +2,21 @@ import { Errors } from '../core/errors.js';
 import { isoNow } from '../core/util.js';
 import { ownAccount, requireAccount, requireAuth } from './middleware.js';
 
+// Keychain entries are "<pak guid (32 hex)>:<base64 AES-256 key>:<item>". Builds like 5.41 fail
+// login with "Unable to parse json" on an empty list, so when no real keys are configured we
+// send one entry for a pak GUID no build uses (hex of "GALLIUM" + 1). Never the zero GUID, which
+// unencrypted paks use.
+const PLACEHOLDER_KEY = `47414C4C49554D000000000000000001:${Buffer.alloc(32).toString('base64')}:Gallium_Placeholder`;
+const KEY_RE = /^[0-9A-Fa-f]{32}:[A-Za-z0-9+/=]+(:.*)?$/;
+
+/** Keys from data/keychain.json (per season: data/keychain/season<N>.json), else the placeholder. */
+function keychain(ctx) {
+  const { dataFiles } = ctx.services;
+  const list = dataFiles.first(`keychain/season${ctx.version.season}.json`, 'keychain.json');
+  const keys = Array.isArray(list) ? list.filter((k) => typeof k === 'string' && KEY_RE.test(k)) : [];
+  return keys.length ? keys : [PLACEHOLDER_KEY];
+}
+
 /** fortnite-public-service routes other than MCP. */
 export function registerFortniteRoutes(router) {
   // ---- version / access checks --------------------------------------------------------------
@@ -36,7 +51,7 @@ export function registerFortniteRoutes(router) {
 
   // ---- storefront ---------------------------------------------------------------------------
   router.get('/fortnite/api/storefront/v2/catalog', requireAuth, (ctx) => ctx.json(ctx.services.catalog.get(ctx.version)));
-  router.get('/fortnite/api/storefront/v2/keychain', requireAuth, (ctx) => ctx.json([]));
+  router.get('/fortnite/api/storefront/v2/keychain', requireAuth, (ctx) => ctx.json(keychain(ctx)));
   router.get('/fortnite/api/storefront/v2/gift/check_eligibility/recipient/:recipientId/offer/:offerId', requireAccount, (ctx) => {
     const { catalog, friends, accounts } = ctx.services;
     const { recipientId, offerId } = ctx.params;
