@@ -1,0 +1,18 @@
+{
+  "name": "gallium-backend",
+  "version": "1.0.0",
+  "description": "Gallium - a local, version-adaptive Fortnite backend",
+  "type": "module",
+  "main": "src/index.js",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/index.js",
+    "cli": "node --disable-warning=ExperimentalWarning scripts/cli.js",
+    "sync-cosmetics": "node scripts/sync-cosmetics.js",
+    "test": "node --disable-warning=ExperimentalWarning --test --test-concurrency=1 \"test/*.test.js\""
+  }
+}

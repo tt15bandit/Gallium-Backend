@@ -1,0 +1,7 @@
+node_modules/
+logs/
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/cosmetics.json
+gallium.config.json
